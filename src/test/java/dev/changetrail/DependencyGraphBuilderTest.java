@@ -125,4 +125,60 @@ class DependencyGraphBuilderTest {
         assertEquals(Set.of(order), graph.getAffectedFiles(payment));
     }
 
+    @Test
+    void connectsProductionFilesToTestFiles() throws IOException {
+        Path mainRoot = tempDir.resolve("src/main/java");
+        Path testRoot = tempDir.resolve("src/test/java");
+
+        Path paymentDir = Files.createDirectories(
+                mainRoot.resolve("com/shop/payments")
+        );
+
+        Path orderDir = Files.createDirectories(
+                mainRoot.resolve("com/shop/orders")
+        );
+
+        Path testDir = Files.createDirectories(
+                testRoot.resolve("com/shop/tests")
+        );
+
+        Path payment = paymentDir.resolve("PaymentService.java");
+        Path order = orderDir.resolve("OrderService.java");
+        Path orderTest = testDir.resolve("OrderServiceTest.java");
+
+        Files.writeString(payment, """
+            package com.shop.payments;
+
+            public class PaymentService {
+            }
+            """);
+
+        Files.writeString(order, """
+            package com.shop.orders;
+
+            import com.shop.payments.PaymentService;
+
+            public class OrderService {
+            }
+            """);
+
+        Files.writeString(orderTest, """
+            package com.shop.tests;
+
+            import com.shop.orders.OrderService;
+
+            public class OrderServiceTest {
+            }
+            """);
+
+        DependencyGraph graph = DependencyGraphBuilder.buildProject(tempDir);
+
+        Set<Path> affected = graph.getAffectedFiles(payment);
+
+        assertEquals(Set.of(order, orderTest), affected);
+
+        // Only the test source should be classified as a test file.
+        assertFalse(TestFileIdentifier.isTestFile(order));
+        assertTrue(TestFileIdentifier.isTestFile(orderTest));
+    }
 }
