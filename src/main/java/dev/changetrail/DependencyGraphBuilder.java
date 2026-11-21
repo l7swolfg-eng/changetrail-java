@@ -16,18 +16,23 @@ public class DependencyGraphBuilder {
         DependencyGraph graph = new DependencyGraph();
         Map<String, Path> classFiles = new HashMap<>();
 
-        // First pass: map class names to their source files.
+
+// First pass: identify each class using its declared package.
         for (Path file : files) {
             graph.addFile(file);
 
-            Path relative = sourceRoot.relativize(file);
-            String className = relative.toString()
-                    .replace('/', '.')
-                    .replace('\\', '.')
-                    .replaceAll("\\.java$", "");
+            String fileName = file.getFileName().toString();
+            String simpleName = fileName.substring(0, fileName.length() - 5);
+
+            String packageName = JavaPackageScanner.findPackage(file).orElse("");
+
+            String className = packageName.isEmpty()
+                    ? simpleName
+                    : packageName + "." + simpleName;
 
             classFiles.put(className, file);
         }
+
 
         // Second pass: connect files using their imports.
         for (Path file : files) {
