@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 public class DependencyGraph {
 
@@ -31,4 +33,29 @@ public class DependencyGraph {
                 dependents.getOrDefault(file.normalize(), Set.of())
         );
     }
+
+    public Set<Path> getAffectedFiles(Path changedFile) {
+        Path start = changedFile.normalize();
+
+        Set<Path> visited = new HashSet<>();
+        Queue<Path> queue = new ArrayDeque<>();
+
+        visited.add(start);
+        queue.add(start);
+
+        while (!queue.isEmpty()) {
+            Path current = queue.remove();
+
+            for (Path dependent : getDependents(current)) {
+                if (visited.add(dependent)) {
+                    queue.add(dependent);
+                }
+            }
+        }
+
+        visited.remove(start);
+
+        return Set.copyOf(visited);
+    }
+
 }
