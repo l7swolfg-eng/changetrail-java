@@ -87,4 +87,42 @@ class DependencyGraphBuilderTest {
         assertTrue(graph.getDependents(example).isEmpty());
         assertTrue(graph.getAffectedFiles(example).isEmpty());
     }
+
+    @Test
+    void resolvesDependenciesUsingDeclaredPackages() throws IOException {
+        Path sourceRoot = tempDir.resolve("src/main/java");
+
+        Path servicesDir = Files.createDirectories(
+                sourceRoot.resolve("services")
+        );
+
+        Path applicationDir = Files.createDirectories(
+                sourceRoot.resolve("application")
+        );
+
+        Path payment = servicesDir.resolve("PaymentService.java");
+        Path order = applicationDir.resolve("OrderService.java");
+
+        Files.writeString(payment, """
+            package com.shop.payments;
+
+            public class PaymentService {
+            }
+            """);
+
+        Files.writeString(order, """
+            package com.shop.orders;
+
+            import com.shop.payments.PaymentService;
+
+            public class OrderService {
+            }
+            """);
+
+        DependencyGraph graph = DependencyGraphBuilder.build(sourceRoot);
+
+        assertEquals(Set.of(order), graph.getDependents(payment));
+        assertEquals(Set.of(order), graph.getAffectedFiles(payment));
+    }
+
 }
