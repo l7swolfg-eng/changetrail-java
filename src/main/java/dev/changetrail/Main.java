@@ -1,23 +1,90 @@
 package dev.changetrail;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
-        Path directory = args.length > 0
-                ? Path.of(args[0])
-                : Path.of(".");
+        if (args.length != 2) {
+            System.err.println(
+                    "Usage: ChangeTrail <project-directory> <changed-file>"
+            );
+            System.exit(1);
+        }
 
-        List<Path> javaFiles = JavaFileScanner.findJavaFiles(directory);
+        try {
+            Path projectRoot = Path.of(args[0])
+                    .toAbsolutePath()
+                    .normalize();
 
-        System.out.println("Found " + javaFiles.size() + " Java files:");
+            Path changedFile = Path.of(args[1]);
 
-        for (Path file : javaFiles) {
-            System.out.println(directory.relativize(file));
+            // Resolve relative file paths against the project root.
+            if (!changedFile.isAbsolute()) {
+                changedFile = projectRoot.resolve(changedFile);
+            }
+
+            changedFile = changedFile.toAbsolutePath().normalize();
+
+            if (!Files.isDirectory(projectRoot)) {
+                throw new IllegalArgumentException("Invalid project directory");
+            }
+
+            if (!Files.isRegularFile(changedFile)
+                    || !changedFile.toString().endsWith(".java")) {
+                throw new IllegalArgumentException("Invalid Java file");
+            }
+
+            Path mainRoot = projectRoot.resolve("src/main/java");
+            Path testRoot = projectRoot.resolve("src/test/java");
+
+            if (!changedFile.startsWith(mainRoot)
+                    && !changedFile.startsWith(testRoot)) {
+                throw new IllegalArgumentException(
+                        "Changed file must be inside a Maven Java source directory"
+                );
+            }
+
+            // Build the dependency graph and run BFS.
+            DependencyGraph graph =
+                    DependencyGraphBuilder.buildProject(projectRoot);
+
+            List<Path> affected = graph.getAffectedFiles(changedFile)
+                    .stream()
+                    .sorted(Comparator.naturalOrder())
+                    .toList();
+
+            System.out.println("\nChangeTrail - Test Impact Analysis");
+
+            System.out.println("\nChanged file:");
+            System.out.println("  " + projectRoot.relativize(changedFile));
+
+            System.out.println("\nAffected files:");
+            for (Path file : affected) {
+                System.out.println("  " + projectRoot.relativize(file));
+            }
+
+            // Keep only affected files located in test directories.
+            List<Path> affectedTests = affected.stream()
+                    .filter(TestFileIdentifier::isTestFile)
+                    .toList();
+
+            System.out.println("\nAffected test files:");
+            for (Path file : affectedTests) {
+                System.out.println("  " + projectRoot.relativize(file));
+            }
+
+            System.out.println("\nTotal affected tests: "
+                    + affectedTests.size());
+
+        } catch (IOException | IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            System.exit(1);
         }
     }
 }
