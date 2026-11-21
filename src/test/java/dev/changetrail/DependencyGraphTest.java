@@ -45,4 +45,52 @@ class DependencyGraphTest {
 
         assertTrue(graph.getDependents(file).isEmpty());
     }
+
+    @Test
+    void findsDirectAndIndirectDependents() {
+        DependencyGraph graph = new DependencyGraph();
+
+        Path payment = Path.of("PaymentService.java");
+        Path order = Path.of("OrderService.java");
+        Path orderTest = Path.of("OrderServiceTest.java");
+
+        graph.addDependency(order, payment);
+        graph.addDependency(orderTest, order);
+
+        Set<Path> affected = graph.getAffectedFiles(payment);
+
+        assertEquals(Set.of(order, orderTest), affected);
+    }
+
+    @Test
+    void handlesCircularDependencies() {
+        DependencyGraph graph = new DependencyGraph();
+
+        Path fileA = Path.of("A.java");
+        Path fileB = Path.of("B.java");
+
+        graph.addDependency(fileA, fileB);
+        graph.addDependency(fileB, fileA);
+
+        Set<Path> affected = graph.getAffectedFiles(fileA);
+
+        assertEquals(Set.of(fileB), affected);
+    }
+
+    @Test
+    void excludesUnrelatedFiles() {
+        DependencyGraph graph = new DependencyGraph();
+
+        Path payment = Path.of("PaymentService.java");
+        Path order = Path.of("OrderService.java");
+        Path unrelated = Path.of("Logger.java");
+
+        graph.addDependency(order, payment);
+        graph.addFile(unrelated);
+
+        Set<Path> affected = graph.getAffectedFiles(payment);
+
+        assertEquals(Set.of(order), affected);
+        assertFalse(affected.contains(unrelated));
+    }
 }
