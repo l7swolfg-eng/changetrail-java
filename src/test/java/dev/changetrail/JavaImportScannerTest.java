@@ -1,4 +1,3 @@
-
 package dev.changetrail;
 
 import org.junit.jupiter.api.Test;
@@ -68,4 +67,45 @@ class JavaImportScannerTest {
 
         assertTrue(imports.isEmpty());
     }
+
+    @Test
+    void ignoresImportsInsideBlockComments() throws IOException {
+        Path file = tempDir.resolve("OrderService.java");
+
+        Files.writeString(file, """
+            package com.shop;
+
+            /*
+            import com.shop.PaymentService;
+            */
+
+            import java.util.List;
+
+            public class OrderService {
+            }
+            """);
+
+        List<String> imports = JavaImportScanner.findImports(file);
+
+        assertEquals(List.of("java.util.List"), imports);
+    }
+
+    @Test
+    void ignoresImportsInsideTextBlocks() throws IOException {
+        Path file = tempDir.resolve("Example.java");
+
+        String source =
+                "public class Example {\n" +
+                        "    String text = \"\"\"\n" +
+                        "import com.shop.PaymentService;\n" +
+                        "\"\"\";\n" +
+                        "}\n";
+
+        Files.writeString(file, source);
+
+        List<String> imports = JavaImportScanner.findImports(file);
+
+        assertTrue(imports.isEmpty());
+    }
+
 }
