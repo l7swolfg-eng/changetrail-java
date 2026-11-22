@@ -1,5 +1,6 @@
 package dev.changetrail;
 
+import java.util.regex.Pattern;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,6 +38,8 @@ public class DependencyGraphBuilder {
 
         DependencyGraph graph = new DependencyGraph();
         Map<String, Path> classFiles = new HashMap<>();
+        // Groups source files by their declared package.
+        Map<String, Map<String, Path>> packageFiles = new HashMap<>();
 
         // First pass: identify each class by its package and filename.
         for (Path file : files) {
@@ -53,10 +56,16 @@ public class DependencyGraphBuilder {
                     : packageName + "." + simpleName;
 
             classFiles.put(className, file);
+            packageFiles
+                    .computeIfAbsent(packageName, key -> new HashMap<>())
+                    .put(simpleName, file);
         }
 
         // Second pass: connect files using their imports.
+
         for (Path file : files) {
+
+            // First, handle explicitly imported classes.
             for (String imported : JavaImportScanner.findImports(file)) {
                 Path dependency = classFiles.get(imported);
 
@@ -64,7 +73,33 @@ public class DependencyGraphBuilder {
                     graph.addDependency(file, dependency);
                 }
             }
+
+            // Also look for references to classes in the same package.
+            String packageName = JavaPackageScanner.findPackage(file).orElse("");
+            String source = Files.readString(file);
+
+            Map<String, Path> samePackage = packageFiles.getOrDefault(
+                    packageName, Map.of()
+            );
+
+            for (Map.Entry<String, Path> entry : samePackage.entrySet()) {
+                String className = entry.getKey();
+                Path dependency = entry.getValue();
+
+                // A file should not depend on itself.
+                if (dependency.equals(file)) {
+                    continue;
+                }
+
+                // Match the whole class name, not part of another word.
+                String pattern = "\\b" + Pattern.quote(className) + "\\b";
+
+                if (Pattern.compile(pattern).matcher(source).find()) {
+                    graph.addDependency(file, dependency);
+                }
+            }
         }
+
 
         return graph;
     }

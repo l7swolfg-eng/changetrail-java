@@ -181,4 +181,44 @@ class DependencyGraphBuilderTest {
         assertFalse(TestFileIdentifier.isTestFile(order));
         assertTrue(TestFileIdentifier.isTestFile(orderTest));
     }
+
+    @Test
+    void detectsSamePackageDependencies() throws IOException {
+        Path sourceRoot = tempDir.resolve("src/main/java");
+        Path packageDir = Files.createDirectories(
+                sourceRoot.resolve("com/shop")
+        );
+
+        Path payment = packageDir.resolve("PaymentService.java");
+        Path order = packageDir.resolve("OrderService.java");
+        Path unrelated = packageDir.resolve("Logger.java");
+
+        Files.writeString(payment, """
+            package com.shop;
+
+            public class PaymentService {
+            }
+            """);
+
+        Files.writeString(order, """
+            package com.shop;
+
+            public class OrderService {
+                private PaymentService payment;
+            }
+            """);
+
+        Files.writeString(unrelated, """
+            package com.shop;
+
+            public class Logger {
+            }
+            """);
+
+        DependencyGraph graph = DependencyGraphBuilder.build(sourceRoot);
+
+        assertEquals(Set.of(order), graph.getDependents(payment));
+        assertEquals(Set.of(order), graph.getAffectedFiles(payment));
+    }
+
 }
