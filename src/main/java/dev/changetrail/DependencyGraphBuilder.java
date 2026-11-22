@@ -76,7 +76,9 @@ public class DependencyGraphBuilder {
 
             // Also look for references to classes in the same package.
             String packageName = JavaPackageScanner.findPackage(file).orElse("");
-            String source = Files.readString(file);
+            String source = JavaSourceSanitizer.stripNonCode(
+                    Files.readString(file)
+            );
 
             Map<String, Path> samePackage = packageFiles.getOrDefault(
                     packageName, Map.of()

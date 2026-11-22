@@ -221,4 +221,38 @@ class DependencyGraphBuilderTest {
         assertEquals(Set.of(order), graph.getAffectedFiles(payment));
     }
 
+
+    @Test
+    void ignoresClassNamesInCommentsAndStrings() throws IOException {
+        Path sourceRoot = tempDir.resolve("src/main/java");
+        Path packageDir = Files.createDirectories(
+                sourceRoot.resolve("com/shop")
+        );
+
+        Path payment = packageDir.resolve("PaymentService.java");
+        Path audit = packageDir.resolve("AuditLog.java");
+
+        Files.writeString(payment, """
+            package com.shop;
+
+            public class PaymentService {
+            }
+            """);
+
+        Files.writeString(audit, """
+            package com.shop;
+
+            public class AuditLog {
+                // PaymentService handles transactions.
+                String message = "PaymentService";
+            }
+            """);
+
+        DependencyGraph graph = DependencyGraphBuilder.build(sourceRoot);
+
+        assertTrue(graph.getDependents(payment).isEmpty());
+        assertTrue(graph.getAffectedFiles(payment).isEmpty());
+    }
+
+
 }
