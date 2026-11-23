@@ -3,6 +3,7 @@ package dev.changetrail;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -69,10 +70,16 @@ public class Main {
                 System.out.println("  " + projectRoot.relativize(file));
             }
 
-            // Keep only affected files located in test directories.
-            List<Path> affectedTests = affected.stream()
+            // Collect affected tests. A changed test file must run as well.
+            List<Path> affectedTests = new ArrayList<>(affected.stream()
                     .filter(TestFileIdentifier::isTestFile)
-                    .toList();
+                    .toList());
+
+            if (TestFileIdentifier.isTestFile(changedFile)) {
+                affectedTests.add(changedFile);
+            }
+
+            affectedTests.sort(Comparator.naturalOrder());
 
             System.out.println("\nAffected test files:");
             for (Path file : affectedTests) {

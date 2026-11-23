@@ -23,7 +23,16 @@ public class JavaImportScanner {
                         7, trimmed.length() - 1
                 ).trim();
 
-                if (!importName.startsWith("static ")) {
+                if (importName.startsWith("static ")) {
+                    // A static import names a member of a class, or *.
+                    // Keep the owning class so the graph can resolve it.
+                    String member = importName.substring(7).trim();
+                    int lastDot = member.lastIndexOf('.');
+
+                    if (lastDot > 0) {
+                        imports.add(member.substring(0, lastDot));
+                    }
+                } else {
                     imports.add(importName);
                 }
             }

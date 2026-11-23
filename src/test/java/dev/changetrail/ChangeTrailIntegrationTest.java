@@ -83,4 +83,44 @@ class ChangeTrailIntegrationTest {
         assertFalse(result.contains("OtherServiceTest.java"));
         assertTrue(result.contains("Total affected tests: 1"));
     }
+
+    @Test
+    void includesChangedTestFileInAffectedTests() throws IOException {
+        Path testDir = Files.createDirectories(
+                tempDir.resolve("src/test/java/com/shop")
+        );
+
+        Files.writeString(testDir.resolve("OrderServiceTest.java"), """
+                package com.shop;
+
+                public class OrderServiceTest {
+                }
+                """);
+
+        // A minimal production directory is required by buildProject().
+        Files.createDirectories(tempDir.resolve("src/main/java"));
+
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        try {
+            System.setOut(new PrintStream(
+                    output, true, StandardCharsets.UTF_8
+            ));
+
+            Main.main(new String[]{
+                    tempDir.toString(),
+                    "src/test/java/com/shop/OrderServiceTest.java"
+            });
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        String result = output.toString(StandardCharsets.UTF_8);
+
+        assertTrue(result.contains("Affected test files:"));
+        assertTrue(result.contains("  src/test/java/com/shop/OrderServiceTest.java"));
+        assertTrue(result.contains("Total affected tests: 1"));
+    }
+
 }

@@ -39,11 +39,13 @@ class JavaImportScannerTest {
     }
 
     @Test
-    void ignoresStaticImports() throws IOException {
+    void resolvesStaticImportsToOwningClasses() throws IOException {
         Path javaFile = tempDir.resolve("Calculator.java");
 
         String source = """
                 import static java.lang.Math.PI;
+                import static com.example.Constants.MAX_RETRIES;
+                import static com.example.Helpers.*;
                 import java.util.ArrayList;
 
                 public class Calculator {
@@ -54,7 +56,12 @@ class JavaImportScannerTest {
 
         List<String> imports = JavaImportScanner.findImports(javaFile);
 
-        assertEquals(List.of("java.util.ArrayList"), imports);
+        assertEquals(List.of(
+                "java.lang.Math",
+                "com.example.Constants",
+                "com.example.Helpers",
+                "java.util.ArrayList"
+        ), imports);
     }
 
     @Test

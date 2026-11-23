@@ -255,4 +255,53 @@ class DependencyGraphBuilderTest {
     }
 
 
+
+    @Test
+    void connectsFilesUsingStaticImports() throws IOException {
+        Path sourceRoot = tempDir.resolve("src/main/java");
+        Path configDir = Files.createDirectories(
+                sourceRoot.resolve("com/shop/config")
+        );
+        Path serviceDir = Files.createDirectories(
+                sourceRoot.resolve("com/shop/service")
+        );
+
+        Path constants = configDir.resolve("Constants.java");
+        Path order = serviceDir.resolve("OrderService.java");
+        Path report = serviceDir.resolve("ReportService.java");
+
+        Files.writeString(constants, """
+                package com.shop.config;
+
+                public class Constants {
+                    public static final int MAX_RETRIES = 3;
+                }
+                """);
+
+        Files.writeString(order, """
+                package com.shop.service;
+
+                import static com.shop.config.Constants.MAX_RETRIES;
+
+                public class OrderService {
+                    int retries = MAX_RETRIES;
+                }
+                """);
+
+        Files.writeString(report, """
+                package com.shop.service;
+
+                import static com.shop.config.Constants.*;
+
+                public class ReportService {
+                    int retries = MAX_RETRIES;
+                }
+                """);
+
+        DependencyGraph graph = DependencyGraphBuilder.build(sourceRoot);
+
+        assertEquals(Set.of(order, report), graph.getDependents(constants));
+        assertEquals(Set.of(order, report), graph.getAffectedFiles(constants));
+    }
+
 }
